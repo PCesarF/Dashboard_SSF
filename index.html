@@ -355,7 +355,9 @@ body{overflow:hidden}
   <!-- Zona de datos -->
   <div class="sb-data">
     <div class="sb-vlbl" id="vLabel">Sin datos · Carga la plantilla</div>
-    <button class="btn-sb-p" id="btnLoad">⬆ Cargar plantilla</button>
+    <button class="btn-sb-p" id="btnDrive">↻ Actualizar datos</button>
+    <div id="driveStatus" role="status" style="font-size:10px;color:rgba(255,255,255,.85);margin:5px 0"></div>
+    <button class="btn-sb-s" id="btnLoad">⬆ Cargar plantilla local</button>
     <button class="btn-sb-s" id="btnTmpl">⬇ Descargar plantilla</button>
     <div class="sb-icon-row">
       <button class="btn-sb-ico" id="btnArch" title="Archivar versión actual">💾 Archivar</button>
@@ -386,7 +388,7 @@ body{overflow:hidden}
   </nav>
 
   <div class="sb-foot">
-    <div id="upTime"></div>
+    <div id="driveSyncSidebar" style="font-size:9px;color:rgba(255,255,255,.8)"></div>
   </div>
 </aside>
 
@@ -632,6 +634,7 @@ body{overflow:hidden}
 const $ = id => document.getElementById(id);
 
 const n = v => {
+  if (typeof v === 'number') return v;
   if (v === null || v === undefined || v === '') return 0;
   const p = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
   return isNaN(p) ? 0 : p;
@@ -718,7 +721,7 @@ function nk(s) {
     .replace(/[\s\-_.]+/g, '_').replace(/[^a-z0-9_]/g, '').trim();
 }
 function buildLK(row) {
-  const m = {};
+  const m = Object.create(null);
   Object.keys(row).forEach(k => { m[nk(k)] = row[k]; });
   return m;
 }
@@ -733,6 +736,7 @@ function gv(lk) {
 function gn(lk) {
   const aliases = Array.prototype.slice.call(arguments, 1);
   const v = gv.apply(null, [lk].concat(aliases));
+  if (typeof v === 'number') return v;
   if (v === '' || v === null || v === undefined) return 0;
   const p = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
   return isNaN(p) ? 0 : p;
@@ -740,6 +744,12 @@ function gn(lk) {
 function gs(lk) {
   const aliases = Array.prototype.slice.call(arguments, 1);
   return String(gv.apply(null, [lk].concat(aliases))).trim();
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, function(char) {
+    return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char];
+  });
 }
 
 function showSt(type, msg) {
@@ -752,38 +762,15 @@ function showSt(type, msg) {
 }
 
 // ══════════════════════════════════════════
-// DATOS — 21 proyectos
+// DATOS — estado del dashboard
 // ══════════════════════════════════════════
-var DEFAULT = [
-  {nombre:"FÉNIX - CIUDAD ESCOLAR",codigo:"CCF008-05-00008",estado:"En ejecución",valor_total:83361352846,total_ejecutado:42308425587,ejecutado_vigencia:4004503025,presupuesto_2026:45057430284,saldo:41052927259,v2024:7498929236,v2025:26624427634,porc_ejec_vigencia:8.89,porc_ejec_general:50.75,porc_ejec_obra:71,fecha_inicio:"2024-06-30",fecha_fin:"2026-12-30",dias_info:"Faltan 265 días",dias_num:265,lmi_2026:45057430284,lmi_ejec:4004503025,lmi_saldo:41052927259,
-   alcances:[{nombre:"Acceso, senderos y garita",avance:0.95,fi:"2024-06-30",ff:"2025-05-03"},{nombre:"Servicios públicos",avance:1,fi:"2024-07-01",ff:"2024-12-26"},{nombre:"Muro de contención",avance:0.9,fi:"2025-05-20",ff:"2025-12-14"},{nombre:"Bloques 1, 2 y 9",avance:0.2,fi:"2025-10-15",ff:"2026-11-22"},{nombre:"Dotación",avance:0,fi:"2026-02-01",ff:"2026-12-30"}]},
-  {nombre:"2024-002 AMPLIACIÓN PARQUEADERO Y CANALES TAKURIKA",codigo:"CCF008-05-00016",estado:"En ejecución",valor_total:7294948891,total_ejecutado:4956401947,ejecutado_vigencia:212363290,presupuesto_2026:2550910234,saldo:2338546944,v2024:1515120296,v2025:3228918361,porc_ejec_vigencia:8.33,porc_ejec_general:67.94,porc_ejec_obra:99,fecha_inicio:"2024-12-12",fecha_fin:"2026-05-31",dias_info:"Faltan 52 días",dias_num:52,lmi_2026:2550910234,lmi_ejec:212363290,lmi_saldo:2338546944,alcances:[]},
-  {nombre:"2025-001 INCREMENTO FONDO CRÉDITO SOCIAL",codigo:"CCF008-04-00009",estado:"Finalizado",valor_total:26000000000,total_ejecutado:26000000000,ejecutado_vigencia:4034534474,presupuesto_2026:4034534474,saldo:0,v2024:0,v2025:21965465526,porc_ejec_vigencia:100,porc_ejec_general:100,porc_ejec_obra:100,fecha_inicio:"2025-02-01",fecha_fin:"2026-02-28",dias_info:"Terminado hace 40 días",dias_num:-40,lmi_2026:4034534474,lmi_ejec:4034534474,lmi_saldo:0,alcances:[]},
-  {nombre:"2024-007 MEJORAMIENTO KIOSKO Y PISCINA NIÑOS TAKURIKA",codigo:"CCF008-05-00020",estado:"En ejecución",valor_total:4162619912,total_ejecutado:3836744301,ejecutado_vigencia:284790076,presupuesto_2026:610665687,saldo:325875611,v2024:0,v2025:3551954225,porc_ejec_vigencia:46.64,porc_ejec_general:92.17,porc_ejec_obra:98,fecha_inicio:"2025-02-01",fecha_fin:"2026-05-31",dias_info:"Faltan 52 días",dias_num:52,lmi_2026:610665687,lmi_ejec:284790076,lmi_saldo:325875611,alcances:[]},
-  {nombre:"2025-003 FINANCIACIÓN VIS PORTALES DEL RÍO ETAPA 2",codigo:"08-02-00002",estado:"En ejecución",valor_total:5000000000,total_ejecutado:5000000000,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:5000000000,porc_ejec_vigencia:0,porc_ejec_general:100,porc_ejec_obra:50,fecha_inicio:"2025-03-28",fecha_fin:"2025-12-19",dias_info:"Terminado hace 112 días",dias_num:-112,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"2025-004 AMPLIACIÓN SISTEMA ELÉCTRICO MAGANGUÉ",codigo:"CCF008-05-00001",estado:"En ejecución",valor_total:566637677,total_ejecutado:254906101,ejecutado_vigencia:96976097,presupuesto_2026:403362253,saldo:311731576,v2024:0,v2025:157930004,porc_ejec_vigencia:24.04,porc_ejec_general:44.99,porc_ejec_obra:69,fecha_inicio:"2025-10-11",fecha_fin:"2026-07-31",dias_info:"Faltan 113 días",dias_num:113,lmi_2026:403362253,lmi_ejec:96976097,lmi_saldo:311731576,alcances:[]},
-  {nombre:"2025-005 AMPLIACIÓN SISTEMA DISTRIBUCIÓN AGUA TAKURIKA",codigo:"CCF008-05-00002",estado:"En ejecución",valor_total:549577430,total_ejecutado:246915213,ejecutado_vigencia:97737820,presupuesto_2026:392915201,saldo:302662217,v2024:0,v2025:149177393,porc_ejec_vigencia:24.88,porc_ejec_general:44.93,porc_ejec_obra:60,fecha_inicio:"2025-12-03",fecha_fin:"2026-07-31",dias_info:"Faltan 113 días",dias_num:113,lmi_2026:392915201,lmi_ejec:97737820,lmi_saldo:302662217,alcances:[]},
-  {nombre:"2025-006 REFORZAMIENTO CERRAMIENTO PERIMETRAL TAKURIKA",codigo:"CCF008-05-00003",estado:"En formulación",valor_total:0,total_ejecutado:0,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:0,porc_ejec_vigencia:0,porc_ejec_general:0,porc_ejec_obra:0,fecha_inicio:"2026-05-01",fecha_fin:"2026-05-30",dias_info:"Faltan 51 días",dias_num:51,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"2025-007 MEJORAMIENTO ZONAS DESCARGUE Y PÉRGOLAS TAKURIKA",codigo:"CCF008-05-00004",estado:"En ejecución",valor_total:313920380,total_ejecutado:494235,ejecutado_vigencia:0,presupuesto_2026:313426145,saldo:313426145,v2024:0,v2025:494235,porc_ejec_vigencia:0,porc_ejec_general:0.16,porc_ejec_obra:0,fecha_inicio:"2025-11-10",fecha_fin:"2026-06-30",dias_info:"Faltan 82 días",dias_num:82,lmi_2026:313426145,lmi_ejec:0,lmi_saldo:313426145,alcances:[]},
-  {nombre:"TORRE DE SERVICIOS COMFENALCO",codigo:"N/A",estado:"En formulación",valor_total:0,total_ejecutado:0,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:0,porc_ejec_vigencia:0,porc_ejec_general:0,porc_ejec_obra:0,fecha_inicio:"",fecha_fin:"",dias_info:"",dias_num:null,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"ALOJAMIENTOS TAKURIKA",codigo:"N/A",estado:"En formulación",valor_total:0,total_ejecutado:0,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:0,porc_ejec_vigencia:0,porc_ejec_general:0,porc_ejec_obra:0,fecha_inicio:"",fecha_fin:"",dias_info:"",dias_num:null,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"LOTE SEDE RECREATIVA",codigo:"N/A",estado:"En formulación",valor_total:0,total_ejecutado:0,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:0,porc_ejec_vigencia:0,porc_ejec_general:0,porc_ejec_obra:0,fecha_inicio:"2026-01-26",fecha_fin:"2026-03-27",dias_info:"",dias_num:null,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"CASA SANTA BÁRBARA MOMPOX",codigo:"N/A",estado:"En formulación",valor_total:0,total_ejecutado:0,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:0,porc_ejec_vigencia:0,porc_ejec_general:0,porc_ejec_obra:0,fecha_inicio:"2026-01-26",fecha_fin:"2026-04-21",dias_info:"",dias_num:null,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"TRABAJO HÍBRIDO",codigo:"N/A",estado:"En formulación",valor_total:0,total_ejecutado:0,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:0,porc_ejec_vigencia:0,porc_ejec_general:0,porc_ejec_obra:0,fecha_inicio:"2026-04-24",fecha_fin:"2026-06-30",dias_info:"",dias_num:null,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"ADECUACIÓN JARDÍN BOTÁNICO",codigo:"N/A",estado:"En formulación",valor_total:0,total_ejecutado:0,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:0,porc_ejec_vigencia:0,porc_ejec_general:0,porc_ejec_obra:0,fecha_inicio:"2024-03-01",fecha_fin:"2025-02-28",dias_info:"",dias_num:null,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"SISTEMA CONTRAINCENDIOS TAKURIKA",codigo:"N/A",estado:"En formulación",valor_total:0,total_ejecutado:0,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:0,porc_ejec_vigencia:0,porc_ejec_general:0,porc_ejec_obra:0,fecha_inicio:"2025-02-01",fecha_fin:"2025-02-28",dias_info:"",dias_num:null,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"2026-001 INCREMENTO FONDO CRÉDITO SOCIAL",codigo:"CCF008-04-00010",estado:"En formulación",valor_total:28000000000,total_ejecutado:0,ejecutado_vigencia:0,presupuesto_2026:25058924514,saldo:28000000000,v2024:0,v2025:0,porc_ejec_vigencia:0,porc_ejec_general:0,porc_ejec_obra:0,fecha_inicio:"",fecha_fin:"",dias_info:"",dias_num:null,lmi_2026:25058924514,lmi_ejec:0,lmi_saldo:28000000000,alcances:[]},
-  {nombre:"2024-003 MEJORAMIENTO SEDE RECREACIONAL MAGANGUÉ",codigo:"CCF008-02-00017",estado:"Finalizado",valor_total:426800378,total_ejecutado:426800378,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:206404170,v2025:220396208,porc_ejec_vigencia:0,porc_ejec_general:100,porc_ejec_obra:100,fecha_inicio:"",fecha_fin:"",dias_info:"",dias_num:null,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"2025-002 COMPRA ACCIONES ASOPAGOS",codigo:"CCF008-07-00004",estado:"Finalizado",valor_total:778000000,total_ejecutado:778000000,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:778000000,porc_ejec_vigencia:0,porc_ejec_general:100,porc_ejec_obra:100,fecha_inicio:"2025-05-02",fecha_fin:"2025-11-30",dias_info:"Terminado hace 130 días",dias_num:-130,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"2024-001 INCREMENTO FONDO CRÉDITO SOCIAL",codigo:"CCF008-04-00008",estado:"Finalizado",valor_total:26000000000,total_ejecutado:26000000000,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:21170185437,v2025:4829814563,porc_ejec_vigencia:0,porc_ejec_general:100,porc_ejec_obra:100,fecha_inicio:"2024-03-01",fecha_fin:"2025-02-28",dias_info:"Terminado hace 405 días",dias_num:-405,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]},
-  {nombre:"22-02 FINANCIACIÓN VIS PORTALES DEL RÍO MAGANGUÉ",codigo:"N/A",estado:"Finalizado",valor_total:3000000000,total_ejecutado:3000000000,ejecutado_vigencia:0,presupuesto_2026:0,saldo:0,v2024:0,v2025:0,porc_ejec_vigencia:0,porc_ejec_general:100,porc_ejec_obra:100,fecha_inicio:"2022-05-30",fecha_fin:"2025-08-30",dias_info:"Terminado hace 222 días",dias_num:-222,lmi_2026:0,lmi_ejec:0,lmi_saldo:0,alcances:[]}
-];
-
-var PROJECTS = JSON.parse(JSON.stringify(DEFAULT));
+var PROJECT_HEADERS = ["nombre","codigo","estado","valor_total","total_ejecutado","ejecutado_vigencia","presupuesto_2026","saldo","v2024","v2025","porc_ejec_vigencia","porc_ejec_general","porc_ejec_obra","fecha_inicio","fecha_fin","dias_info","dias_num","lmi_2026","lmi_ejec","lmi_saldo"];
+var PROJECTS = [];
 var HISTORY  = [];
 var MODIFS   = [];
 var curFilter    = 'all';
-var curVLabel    = 'Datos de referencia — Vigencia 2026';
+var curVLabel    = 'Sin datos';
+var lastDriveSync = null;
 var modCatFilter = 'all';
 var modSortKey   = 'año';
 var modSortAsc   = false;
@@ -820,7 +807,13 @@ function summary(data) {
 function renderAll() {
   var S = summary(PROJECTS);
   var el = $('upTime');
-  if (el) el.textContent = '📅 ' + new Date().toLocaleString('es-CO',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  var syncText = lastDriveSync
+    ? 'Última sincronización con Drive · ' + new Date(lastDriveSync).toLocaleString('es-CO', {
+        dateStyle:'short', timeStyle:'medium', timeZone:'America/Bogota'
+      }) + ' (Colombia)'
+    : 'Drive · pendiente de sincronización';
+  if (el) el.textContent = syncText;
+  $('driveSyncSidebar').textContent = syncText;
   var vl = $('vLabel'); if (vl) vl.textContent = curVLabel;
 
   ['c-all','c-e','c-f','c-fi'].forEach(function(id, i) {
@@ -953,7 +946,7 @@ function renderTop() {
   el.innerHTML = top.map(function(p,i) {
     return '<div class="ti">' +
       '<div class="trk" style="background:'+cols[i]+'22;color:'+cols[i]+'">'+(i+1)+'</div>' +
-      '<div class="tin"><div class="tnm">'+p.nombre+'</div>' +
+      '<div class="tin"><div class="tnm">'+escapeHtml(p.nombre)+'</div>' +
       '<div class="tbw"><div class="tb" style="width:'+(n(p.saldo)/mx*100).toFixed(0)+'%;background:'+cols[i]+'"></div></div></div>' +
       '<div class="tam">'+fmt(n(p.saldo))+'</div></div>';
   }).join('') || '<div style="color:var(--tx3);font-size:10px;padding:5px">Sin saldos pendientes</div>';
@@ -1011,13 +1004,13 @@ function renderTable() {
 
   tb.innerHTML = data.map(function(p, i) {
     var vp = n(p.porc_ejec_vigencia), gp = n(p.porc_ejec_general);
-    var db = p.dias_info ? '<span class="db '+(n(p.dias_num)>=0?'dp2':'dd')+'">'+p.dias_info+'</span>' : '-';
+    var db = p.dias_info ? '<span class="db '+(n(p.dias_num)>=0?'dp2':'dd')+'">'+escapeHtml(p.dias_info)+'</span>' : '-';
     var hasM = modNames[p.nombre];
     var mTag = hasM ? '<span style="font-size:8px;color:#06b6d4;font-weight:700;margin-left:4px">🔄</span>' : '';
     var rowStyle = hasM ? ' style="border-left:3px solid #06b6d4"' : '';
     return '<tr onclick="openMo('+PROJECTS.indexOf(p)+')"'+rowStyle+'>' +
       '<td style="color:var(--tx3)">'+(i+1)+'</td>' +
-      '<td><div class="pn">'+p.nombre+mTag+'<small>'+(p.codigo||'')+'</small></div></td>' +
+      '<td><div class="pn">'+escapeHtml(p.nombre)+mTag+'<small>'+escapeHtml(p.codigo||'')+'</small></div></td>' +
       '<td>'+badge(p.estado)+'</td>' +
       '<td class="tr nc">'+fmt(n(p.valor_total))+'</td>' +
       '<td class="tr nc">'+fmt(n(p.total_ejecutado))+'</td>' +
@@ -1036,7 +1029,7 @@ function openMo(idx) {
   var p = PROJECTS[idx];
   if (!p) return;
   $('moTitle').textContent = p.nombre;
-  $('moSub').innerHTML = 'Código: '+(p.codigo||'N/A')+' · '+badge(p.estado);
+  $('moSub').innerHTML = 'Código: '+escapeHtml(p.codigo||'N/A')+' · '+badge(p.estado);
   var vp=n(p.porc_ejec_vigencia), gp=n(p.porc_ejec_general), op=n(p.porc_ejec_obra);
 
   var tl = '';
@@ -1056,7 +1049,7 @@ function openMo(idx) {
     tl = '<div class="msec">📅 Línea de tiempo</div>' +
       '<div style="background:var(--bg3);border-radius:8px;padding:10px 12px">' +
       '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--tx3);margin-bottom:4px">' +
-        '<span>'+fd(fi)+'</span><span>'+(p.dias_info||'')+'</span><span>'+fd(ff)+'</span>' +
+        '<span>'+escapeHtml(fd(fi))+'</span><span>'+escapeHtml(p.dias_info||'')+'</span><span>'+escapeHtml(fd(ff))+'</span>' +
       '</div>' +
       '<div style="height:7px;background:#e2e8f0;border-radius:3px">' +
         '<div style="height:7px;border-radius:3px;background:linear-gradient(90deg,#164194,#6d9ee3);width:'+tp.toFixed(1)+'%;transition:width .4s"></div>' +
@@ -1072,8 +1065,8 @@ function openMo(idx) {
     return '<div class="ai">' +
       '<div class="ai-i" style="background:'+c2+'22;color:'+c2+'">◆</div>' +
       '<div class="ai-n">' +
-        '<div class="ai-nm">'+(a.nombre||'')+'</div>' +
-        '<div class="ai-dt">'+(a.fi?fd(a.fi)+' → '+fd(a.ff):'Sin fecha')+'</div>' +
+        '<div class="ai-nm">'+escapeHtml(a.nombre||'')+'</div>' +
+        '<div class="ai-dt">'+(a.fi?escapeHtml(fd(a.fi))+' → '+escapeHtml(fd(a.ff)):'Sin fecha')+'</div>' +
         '<div class="alc-edit">' +
           '<input class="alc-pct-inp" id="inp_'+uid+'" type="number" min="0" max="100" value="'+ap+'" title="% avance"/>' +
           '<button class="alc-save" data-pi="'+projIdx+'" data-ai="'+ai+'" data-uid="'+uid+'" onclick="saveAlcance(this)">Guardar</button>' +
@@ -1207,18 +1200,18 @@ function catMeta(cat) {
     'Fuente de recursos':{label:'🏦 Fuente de recursos',cls:'cat-fuente'},
     'Nombre':           {label:'✏️ Nombre',            cls:'cat-nombre'}
   };
-  return m[cat] || {label: cat||'Otro', cls:'cat-otro'};
+  return Object.prototype.hasOwnProperty.call(m, cat) ? m[cat] : {label: cat||'Otro', cls:'cat-otro'};
 }
 
-function loadModificaciones(wb) {
+function parseModificaciones(wb, options) {
   var shName = null;
   wb.SheetNames.forEach(function(s) {
     var k = nk(s);
     if (!shName && (k.indexOf('modif')>=0 || k.indexOf('cambio')>=0 || k==='mod')) shName=s;
   });
-  if (!shName) { MODIFS=[]; updateModBtn(); return; }
+  if (!shName) return [];
 
-  var rows = XLSX.utils.sheet_to_json(wb.Sheets[shName], {defval:'', raw:false, dateNF:'yyyy-mm-dd'});
+  var rows = XLSX.utils.sheet_to_json(wb.Sheets[shName], options);
 
   // ── PASO 1: leer todas las filas válidas ──
   var rawList = [];
@@ -1326,7 +1319,7 @@ function loadModificaciones(wb) {
   });
 
   // ── PASO 3: convertir mapa en MODIFS ──
-  MODIFS = [];
+  var modifications = [];
   order.forEach(function(clave) {
     var e = map[clave];
 
@@ -1349,7 +1342,7 @@ function loadModificaciones(wb) {
     if (fecha)          partes.push('Nueva fecha: '+fecha);
     if (e.nuevoNombre)  partes.push('Nuevo nombre: '+e.nuevoNombre);
 
-    MODIFS.push({
+    modifications.push({
       año:          e.año,
       proyecto:     e.proyecto,
       codigo:       e.codigo,
@@ -1368,7 +1361,7 @@ function loadModificaciones(wb) {
     });
   });
 
-  updateModBtn();
+  return modifications;
 }
 
 function updateModBtn() {
@@ -1441,15 +1434,15 @@ function renderModPanel() {
 
       // Pills de fuentes
       var fHtml=m.fuentes.length
-        ? m.fuentes.map(function(f){return '<span class="fuente-pill '+f.cls+'">'+f.label+'</span>';}).join('')
+        ? m.fuentes.map(function(f){return '<span class="fuente-pill '+f.cls+'">'+escapeHtml(f.label)+'</span>';}).join('')
         : '<span style="color:var(--tx3);font-size:10px">—</span>';
 
       // Valores según categoría
       var vNvo='—';
       if (m.categoria==='Tiempo') {
-        vNvo = m.fecha ? fd(m.fecha) : '—';
+        vNvo = m.fecha ? escapeHtml(fd(m.fecha)) : '—';
       } else if (m.categoria==='Nombre') {
-        vNvo = m.nuevo_nombre || '—';
+        vNvo = escapeHtml(m.nuevo_nombre || '—');
       } else {
         // Valor y Fuente de recursos: mostrar desglose
         var parts=[];
@@ -1462,11 +1455,11 @@ function renderModPanel() {
 
       html+='<tr>' +
         '<td style="color:var(--tx3);white-space:nowrap;font-weight:600">'+m.año+'</td>' +
-        '<td style="max-width:200px;font-weight:600;color:var(--tx)">'+m.proyecto+'</td>' +
-        '<td><span class="cat-badge '+cm.cls+'">'+cm.label+'</span></td>' +
+        '<td style="max-width:200px;font-weight:600;color:var(--tx)">'+escapeHtml(m.proyecto)+'</td>' +
+        '<td><span class="cat-badge '+cm.cls+'">'+escapeHtml(cm.label)+'</span></td>' +
         '<td style="min-width:170px">'+fHtml+'</td>' +
-        '<td style="max-width:180px;color:var(--a3);font-style:italic">'+(m.nuevo_nombre||'—')+'</td>' +
-        '<td style="white-space:nowrap;color:var(--tx2)">'+(m.fecha ? fd(m.fecha) : '—')+'</td>' +
+        '<td style="max-width:180px;color:var(--a3);font-style:italic">'+escapeHtml(m.nuevo_nombre||'—')+'</td>' +
+        '<td style="white-space:nowrap;color:var(--tx2)">'+(m.fecha ? escapeHtml(fd(m.fecha)) : '—')+'</td>' +
         '<td style="min-width:180px;vertical-align:middle">'+vNvo+'</td></tr>';
     });
   });
@@ -1540,7 +1533,7 @@ function exportHistory() {
   if (!HISTORY.length) { showSt('err','El historial está vacío'); return; }
   var wb=XLSX.utils.book_new();
   HISTORY.forEach(function(v,i) {
-    var hdr=Object.keys(DEFAULT[0]).filter(function(k){return k!=='alcances';});
+    var hdr=PROJECT_HEADERS;
     var rows=[hdr].concat(v.data.map(function(p){return hdr.map(function(k){return p[k]!=null?p[k]:'';});}));
     var ws=XLSX.utils.aoa_to_sheet(rows);
     var sn=(v.label+' '+v.date).replace(/[\/:*?"<>|\[\]]/g,'_').slice(0,31)||('V'+(i+1));
@@ -1689,12 +1682,12 @@ function mapRow(row) {
   };
 }
 
-function loadAlcances(wb, mapped) {
+function loadAlcances(wb, mapped, options) {
   var aSh=null;
   wb.SheetNames.forEach(function(s){ if(!aSh&&nk(s).indexOf('alcance')>=0) aSh=s; });
   if (!aSh) return;
-  var aRows=XLSX.utils.sheet_to_json(wb.Sheets[aSh],{defval:'',raw:false,dateNF:'yyyy-mm-dd'});
-  var alcMap={};
+  var aRows=XLSX.utils.sheet_to_json(wb.Sheets[aSh],options);
+  var alcMap=Object.create(null);
   aRows.forEach(function(r){
     var lk=buildLK(r);
     var key=gs(lk,'proyecto_nombre','proyecto nombre','nombre proyecto','proyecto');
@@ -1713,47 +1706,131 @@ function loadAlcances(wb, mapped) {
   });
 }
 
+function parseWorkbook(wb, fromDrive) {
+  var options = {defval:'', raw:fromDrive, dateNF:'yyyy-mm-dd'};
+  var shName=wb.SheetNames[0];
+  var priority=['resumen','vigencia','proyecto'];
+  for (var i=0;i<priority.length;i++) {
+    for (var j=0;j<wb.SheetNames.length;j++) {
+      if (nk(wb.SheetNames[j]).indexOf(priority[i])>=0) { shName=wb.SheetNames[j]; break; }
+    }
+    if (shName!==wb.SheetNames[0]) break;
+  }
+  var rows=XLSX.utils.sheet_to_json(wb.Sheets[shName],options);
+  if (!rows.length) throw new Error('Hoja "'+shName+'" vacía');
+  var mapped=[], disc=[];
+  rows.forEach(function(r,i){ var p=mapRow(r); if(p) mapped.push(p); else disc.push(i+2); });
+  if (!mapped.length) throw new Error('Sin proyectos. Columnas: '+Object.keys(rows[0]).join(' | '));
+  loadAlcances(wb, mapped, options);
+
+  return {projects:mapped, modifs:parseModificaciones(wb, options), sheet:shName, discarded:disc.length};
+}
+
 function handleExcel(f) {
   var reader=new FileReader();
   reader.onload=function(e) {
     try {
       var wb=XLSX.read(e.target.result,{type:'array',cellDates:false,cellNF:false,cellText:false});
-      var shName=wb.SheetNames[0];
-      var priority=['resumen','vigencia','proyecto'];
-      for (var i=0;i<priority.length;i++) {
-        for (var j=0;j<wb.SheetNames.length;j++) {
-          if (nk(wb.SheetNames[j]).indexOf(priority[i])>=0) { shName=wb.SheetNames[j]; break; }
-        }
-        if (shName!==wb.SheetNames[0]) break;
-      }
-      var rows=XLSX.utils.sheet_to_json(wb.Sheets[shName],{defval:'',raw:false,dateNF:'yyyy-mm-dd'});
-      if (!rows.length) throw new Error('Hoja "'+shName+'" vacía');
-      var mapped=[], disc=[];
-      rows.forEach(function(r,i){ var p=mapRow(r); if(p) mapped.push(p); else disc.push(i+2); });
-      if (!mapped.length) throw new Error('Sin proyectos. Columnas: '+Object.keys(rows[0]).join(' | '));
-      loadAlcances(wb, mapped);
+      var data = parseWorkbook(wb, false);
+      var mapped=data.projects, shName=data.sheet;
 
       // 1. Archivar versión actual ANTES de reemplazar datos
       archiveNow(curVLabel+' (antes de actualizar)');
 
       // 2. Cargar nuevos proyectos y modificaciones
       PROJECTS=mapped;
-      loadModificaciones(wb);   // actualiza MODIFS y llama updateModBtn internamente
+      MODIFS=data.modifs;
 
       // 3. Etiqueta de versión
-      curVLabel='Actualización '+new Date().toLocaleDateString('es-CO')+' — '+mapped.length+' proyectos';
+      curVLabel='Actualización local '+new Date().toLocaleDateString('es-CO')+' — '+mapped.length+' proyectos';
 
       // 4. Renderizar todo y persistir
       renderAll();
       updateModBtn();           // asegura estado correcto del botón tras renderAll
       persistCurrent();
       var modMsg=MODIFS.length?' · '+MODIFS.length+' mod.':'';
-      showSt('ok','✅ '+mapped.length+' proyectos cargados desde "'+shName+'"'+(disc.length?' · '+disc.length+' filas vacías':'')+modMsg);
+      showSt('ok','✅ '+mapped.length+' proyectos cargados desde "'+shName+'"'+(data.discarded?' · '+data.discarded+' filas vacías':'')+modMsg);
       addLog('LOAD','Plantilla cargada: "'+f.name+'" — '+mapped.length+' proyectos'+modMsg+' — Versión: "'+curVLabel+'"');
     } catch(err) { showSt('err','❌ '+err.message); }
   };
   reader.onerror=function(){ showSt('err','❌ Error al leer el archivo'); };
   reader.readAsArrayBuffer(f);
+}
+
+// URL /exec de la aplicación web de Apps Script.
+var DRIVE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyhtXohFQjYhx2CqfT90iyVZq5nljSvB7iuQMPuCmSXLG-IXvqs-PqRDRchFwqwrtduaA/exec';
+
+function requestDrive(endpoint) {
+  return new Promise(function(resolve, reject) {
+    var callback = 'ssfDrive_' + crypto.getRandomValues(new Uint32Array(2)).join('_');
+    var script = document.createElement('script');
+    var timer = setTimeout(function() {
+      finish(new Error('Google Drive no respondió a tiempo.'));
+    }, 20000);
+
+    function finish(error, data) {
+      clearTimeout(timer);
+      delete window[callback];
+      script.remove();
+      if (error) reject(error);
+      else resolve(data);
+    }
+
+    window[callback] = function(data) { finish(null, data); };
+    script.onerror = function() {
+      finish(new Error('No se pudo contactar el servicio de Google Drive.'));
+    };
+    endpoint.searchParams.set('callback', callback);
+    endpoint.searchParams.set('t', Date.now());
+    script.src = endpoint.href;
+    document.head.appendChild(script);
+  });
+}
+
+async function refreshDrive() {
+  var btn = $('btnDrive'), status = $('driveStatus');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = 'Actualizando…';
+  status.textContent = 'Consultando Google Drive…';
+  try {
+    if (!DRIVE_ENDPOINT) throw new Error('Falta configurar la URL de Apps Script.');
+    var endpoint = new URL(DRIVE_ENDPOINT);
+    if (endpoint.origin !== 'https://script.google.com' ||
+        !/^\/macros\/s\/[\w-]+\/exec$/.test(endpoint.pathname)) {
+      throw new Error('La URL de Apps Script debe terminar en /exec.');
+    }
+    var payload = await requestDrive(endpoint);
+    if (!payload || payload.tipo !== 'SSF_DRIVE_BRIDGE' || payload.ok !== true) {
+      throw new Error((payload && payload.error) || 'Respuesta de Drive no válida.');
+    }
+    var wb = XLSX.utils.book_new();
+    ['PROYECTOS','ALCANCES','MODIFICACIONES'].forEach(function(name) {
+      var values = payload.hojas && payload.hojas[name];
+      if (!Array.isArray(values) || !values.length || !values.every(Array.isArray)) {
+        throw new Error('La respuesta no incluye la hoja '+name+'.');
+      }
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(values), name);
+    });
+    var data = parseWorkbook(wb, true);
+    var changed = JSON.stringify([PROJECTS, MODIFS]) !== JSON.stringify([data.projects, data.modifs]);
+    if (changed && PROJECTS.length) archiveNow(curVLabel+' (antes de sincronizar)');
+    if (changed) closeMo();
+    PROJECTS = data.projects;
+    MODIFS = data.modifs;
+    curVLabel = 'Google Drive · '+PROJECTS.length+' proyectos';
+    lastDriveSync = new Date().toISOString();
+    renderAll();
+    updateModBtn();
+    persistCurrent();
+    status.textContent = 'Google Drive · sincronizado';
+    if (changed) addLog('LOAD','Google Drive — '+PROJECTS.length+' proyectos · '+MODIFS.length+' modificaciones');
+  } catch (error) {
+    status.textContent = error.message + (PROJECTS.length ? ' Se muestran los datos anteriores.' : '');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↻ Actualizar datos';
+  }
 }
 
 function handleCSV(f) {
@@ -1777,9 +1854,7 @@ function toExcel(data, fname) {
   var wb = XLSX.utils.book_new();
 
   // Hoja PROYECTOS
-  var hdr=['nombre','codigo','estado','valor_total','total_ejecutado','ejecutado_vigencia',
-    'presupuesto_2026','saldo','v2024','v2025','porc_ejec_vigencia','porc_ejec_general',
-    'porc_ejec_obra','fecha_inicio','fecha_fin','dias_info','dias_num','lmi_2026','lmi_ejec','lmi_saldo'];
+  var hdr=PROJECT_HEADERS;
   var pRows=[hdr].concat(data.map(function(p){ return hdr.map(function(k){ return p[k]!=null?p[k]:''; }); }));
   var wsP=XLSX.utils.aoa_to_sheet(pRows);
   wsP['!cols']=[{wch:46},{wch:20},{wch:18},{wch:16},{wch:16},{wch:16},{wch:16},{wch:16},{wch:14},{wch:14},{wch:16},{wch:16},{wch:14},{wch:13},{wch:13},{wch:24},{wch:10},{wch:16},{wch:14},{wch:14}];
@@ -1920,7 +1995,7 @@ function _sDel(k)    { try { if (_store) _store.removeItem(k);                } 
 
 function _slim(projs) {
   var base=projs.map(function(p){ var o={}; Object.keys(p).forEach(function(k){ if(k!=='alcances') o[k]=p[k]; }); return o; });
-  var alcs={};
+  var alcs=Object.create(null);
   projs.forEach(function(p){ if(p.alcances&&p.alcances.length) alcs[p.nombre]=p.alcances; });
   return {base:base, alcs:alcs};
 }
@@ -1932,7 +2007,7 @@ function persistCurrent() {
   if (!_store) return;
   try {
     var s=_slim(PROJECTS);
-    var payload = JSON.stringify({label:curVLabel, base:s.base, alcs:s.alcs, modifs:MODIFS, ts:Date.now()});
+    var payload = JSON.stringify({label:curVLabel, base:s.base, alcs:s.alcs, modifs:MODIFS, ts:Date.now(), lastDriveSync:lastDriveSync});
     _sSet(LS_ACT, payload);
     // Confirmar que se guardó correctamente
     var check = _sGet(LS_ACT);
@@ -1991,6 +2066,8 @@ function loadFromStorage() {
       if (act && act.base && act.base.length) {
         PROJECTS = _rebuild(act.base, act.alcs);
         curVLabel = act.label || curVLabel;
+        lastDriveSync = typeof act.lastDriveSync === 'string' && Number.isFinite(Date.parse(act.lastDriveSync))
+          ? act.lastDriveSync : null;
         MODIFS    = Array.isArray(act.modifs) ? act.modifs : [];
         restoredCurrent = true;
       }
@@ -2036,8 +2113,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   var storeEl=$('storeStatus');
   if (storeEl) storeEl.textContent=storeLabel;
-  var upEl=$('upTime');
-  if (upEl) upEl.textContent=storeOk?'💾 Auto-guardado activo':'⚠️ Sin auto-guardado';
 
   // ── Restaurar última sesión guardada ──
   var restored=loadFromStorage();
@@ -2049,6 +2124,9 @@ document.addEventListener('DOMContentLoaded', function() {
   updateModBtn();
   renderLog();
   updateHomeKPIs();
+
+  $('btnDrive').addEventListener('click', refreshDrive);
+  refreshDrive();
 
   // ── Iniciar en home ──
   showPage('home');
@@ -2159,11 +2237,11 @@ function renderModFull() {
     grp.forEach(function(m) {
       var cm=catMeta(m.categoria);
       var fHtml=m.fuentes.length
-        ?m.fuentes.map(function(f){return '<span class="fuente-pill '+f.cls+'">'+f.label+'</span>';}).join('')
+        ?m.fuentes.map(function(f){return '<span class="fuente-pill '+f.cls+'">'+escapeHtml(f.label)+'</span>';}).join('')
         :'<span style="color:var(--tx3);font-size:10px">—</span>';
       var vNvo='—';
-      if(m.categoria==='Tiempo') { vNvo=m.fecha?fd(m.fecha):'—'; }
-      else if(m.categoria==='Nombre') { vNvo=m.nuevo_nombre||'—'; }
+      if(m.categoria==='Tiempo') { vNvo=m.fecha?escapeHtml(fd(m.fecha)):'—'; }
+      else if(m.categoria==='Nombre') { vNvo=escapeHtml(m.nuevo_nombre||'—'); }
       else {
         var parts=[];
         if(Number(m.val_saldo)>0) parts.push('<span style="display:block"><strong>Saldo obras:</strong> '+fmtF(m.val_saldo)+'</span>');
@@ -2174,11 +2252,11 @@ function renderModFull() {
       }
       html+='<tr>'+
         '<td style="color:var(--tx3);font-weight:600;white-space:nowrap">'+m.año+'</td>'+
-        '<td style="font-weight:600;color:var(--tx);max-width:200px">'+m.proyecto+'</td>'+
-        '<td><span class="cat-badge '+cm.cls+'">'+cm.label+'</span></td>'+
+        '<td style="font-weight:600;color:var(--tx);max-width:200px">'+escapeHtml(m.proyecto)+'</td>'+
+        '<td><span class="cat-badge '+cm.cls+'">'+escapeHtml(cm.label)+'</span></td>'+
         '<td>'+fHtml+'</td>'+
-        '<td style="color:var(--a3);font-style:italic">'+(m.nuevo_nombre||'—')+'</td>'+
-        '<td style="white-space:nowrap;color:var(--tx2)">'+(m.fecha?fd(m.fecha):'—')+'</td>'+
+        '<td style="color:var(--a3);font-style:italic">'+escapeHtml(m.nuevo_nombre||'—')+'</td>'+
+        '<td style="white-space:nowrap;color:var(--tx2)">'+(m.fecha?escapeHtml(fd(m.fecha)):'—')+'</td>'+
         '<td>'+vNvo+'</td></tr>';
     });
   });
